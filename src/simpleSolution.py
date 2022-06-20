@@ -4,7 +4,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import random
 import math
-# from test import runTest
+
 
 def simple():
     """ 简单的贪心分配策略 """
@@ -111,8 +111,12 @@ def linearProgramming_improved():
     time_num, client_num = demand_data.shape
     server_num = len(servers)
 
+    # 改变矩阵形状，尝试一下是否能加速代码
+    demand_data = demand_data.T
+    qos_data = qos_data.T
+
     # set model variable and object
-    model = gp.Model('flow')
+    model = gp.Model('flow distribution')
     x = model.addVars(client_num, server_num, time_num, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='x')
     w = model.addVars(server_num, time_num, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='w')
     w_max = model.addVars(server_num, lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='w_max')  # w_max:代表模型中的 s_hat
@@ -121,32 +125,37 @@ def linearProgramming_improved():
 
     # set constraint
     model.addConstrs((x[i, j, t] == 0 for i in range(client_num) for j in range(server_num) for t in range(time_num)
-                      if qos_data[j, i] >= qos_constraint), name='qos')
-    model.addConstrs((gp.quicksum(x[i, j, t] for j in range(server_num)) == demand_data[t, i] for i in range(client_num)
+                      if qos_data[i, j] >= qos_constraint), name='qos')
+    model.addConstrs((gp.quicksum(x[i, j, t] for j in range(server_num)) == demand_data[i, t] for i in range(client_num)
                      for t in range(time_num)), name='demand')
     model.addConstrs((gp.quicksum(x[i, j, t] for i in range(client_num)) <= server_bandwidths[j] for j in range(server_num)
                       for t in range(time_num)), name='bandwidth_limit')
     model.addConstrs((gp.quicksum(x[i, j, t] for i in range(client_num)) == w[j, t] for j in range(server_num)
                       for t in range(time_num)), name="middle variable constraint")
-    model.addConstrs((gp.quicksum(y[j, t] for t in range(time_num)) <= 0.05 * time_num for j in range(server_num)),
+    top_num = int(0.05 * time_num)
+    model.addConstrs((gp.quicksum(y[j, t] for t in range(time_num)) <= top_num for j in range(server_num)),
                      name='y_constraint')
 
     # quantile_point = math.ceil(0.95 * time_num)
     # sample_t = random.sample([i for i in range(time_num)], quantile_point)
     # model.addConstrs((w_max[j] >= w[j, t] for j in range(server_num) for t in range(time_num) if t in sample_t),
     #                  name='95')
-    M = 999999
+    M = 0x7fffff
     model.addConstrs((w_max[j] >= w[j, t] - M * y[j, t] for j in range(server_num)
-                      for t in range(time_num)), name='95')
+                      for t in range(time_num)), name='95% constraint')
 
     # solve
-    model.setParam('TimeLimit', 300)
+    # model.setParam('TimeLimit', 300)
     model.optimize()
 
     # output solution
     N = client_num * server_num * time_num
     x_result = np.array([v.x for v in model.getVars()[0:N]], dtype=int).reshape((client_num, server_num, time_num))
-    print(x_result.shape)
+    w_result = np.sum(x_result, axis=0)
+    print(f'x shape = {x_result.shape}; w shape = {w_result.shape})')
+    w_result_sorted = np.sort(w_result, axis=1)
+    cost = np.sum([w_result_sorted[i, time_num-top_num] for i in range(server_num)])
+    print(f'Object value = {cost}')
 
     # write solution to file
     with open('../output/solution.txt', mode='w+') as f:
@@ -165,5 +174,4 @@ if __name__ == '__main__':
     # simple() # 177272
     # linearProgramming() # 186427
     linearProgramming_improved()
-    # runTest()
 
