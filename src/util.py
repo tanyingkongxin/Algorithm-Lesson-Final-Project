@@ -11,7 +11,7 @@ import datetime
 # def _datestr2num(date_str) -> int:
 #     s_date = datetime.datetime.strptime(date_str, '%Y-%m-%dT%H:%M').timestamp()
 #     return int(s_date)
-
+data_dir = '../data2'
 
 def read_demand():
     """ 读取客户节点的需求
@@ -20,7 +20,7 @@ def read_demand():
         client: 客户节点名称列表
         data: (time_num × client_num)numpy 数组，每一行表示某个时刻各个客户节点的带宽需求。
     """
-    with open('../data/demand.csv') as f:
+    with open(f'{data_dir}/demand.csv') as f:
         clients = f.readline()[:-1].split(',')[1:]
         data = np.loadtxt(f, dtype=int, delimiter=',', usecols=range(1, len(clients)+1), encoding='utf-8')
     return clients, data
@@ -28,7 +28,7 @@ def read_demand():
 
 def read_config():
     """ 读取 qos 约束值 """
-    with open("../data/config.ini") as f:
+    with open(f"{data_dir}/config.ini") as f:
         qos_constraint = f.read().splitlines()[1].split('=')[1]
         return int(qos_constraint)
 
@@ -41,7 +41,7 @@ def read_bandwidth():
         server_bandwidths: numpy, 边缘节点带宽上限
         server2index: dict, 将边缘节点名称映射为 id
     """
-    with open('../data/site_bandwidth.csv') as f:
+    with open(f'{data_dir}/site_bandwidth.csv') as f:
         data = f.read().splitlines()[1:]
     servers = [''] * len(data)
     server_bandwidths = np.zeros(shape=len(data), dtype=int)
@@ -63,7 +63,7 @@ def read_qos(server2index: dict, num_server: int, num_client: int):
         qos_data: (num_server × num_client)numpy 数组，客户节点和边缘节点之间的 qos 矩阵
     """
     qos_data = np.zeros((num_server, num_client), dtype=int)
-    with open("../data/qos.csv") as f:
+    with open(f"{data_dir}/qos.csv") as f:
         data = f.read().splitlines()
     for line in data[1:]:
         l_line = line.split(',')
