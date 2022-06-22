@@ -166,10 +166,10 @@ def billing():
 
 if __name__ == '__main__':
     # 读取输入文件
-    demandFile = r'../data/demand.csv'
-    site_bandwidthFile = r'../data/site_bandwidth.csv'
+    demandFile = r'../data2/demand.csv'
+    site_bandwidthFile = r'../data2/site_bandwidth.csv'
     solutionFile = r'../output/solution.txt'
-    qosFile = r'../data/qos.csv'
+    qosFile = r'../data2/qos.csv'
 
     qos_constraint = 400
     Client, Client_Count, Time_count = readDemand(demandFile)

@@ -13,6 +13,7 @@ import datetime
 #     return int(s_date)
 data_dir = '../data2'
 
+
 def read_demand():
     """ 读取客户节点的需求
 

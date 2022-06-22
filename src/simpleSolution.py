@@ -4,6 +4,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import random
 import math
+from redistribution import Distribution
 
 
 def simple():
@@ -16,33 +17,24 @@ def simple():
     time_num, client_num = demand_data.shape
     server_num = len(servers)
 
-    output = []
+    distribution = Distribution(clients, servers, time_num)
     for t in range(time_num):
         bandwidth_remain = server_bandwidths.copy()
 
         for i in range(client_num):
-            distribution = [clients[i] + ':']
             demand = demand_data[t, i]
             for j in range(server_num):
                 if qos_data[j, i] < qos_constraint and bandwidth_remain[j] > 0:
                     x = min(demand, bandwidth_remain[j])
                     bandwidth_remain[j] -= x
                     demand -= x
-                    distribution.append(f'<{servers[j]},{x}>')
+                    distribution.add(t, i, j, x)
+
                     if demand == 0:
-                        output.append(distribution)
                         break
             if demand > 0:
                 raise Exception('Wrong distribution!')
-    # 输出结果到 solution.txt
-    with open('../output/solution.txt', mode='w+') as f:
-        for distribution in output:
-            f.writelines(distribution[0])
-            for i in range(1, len(distribution)):
-                if i < len(distribution) - 1:
-                    f.writelines(distribution[i] + ',')
-                else:
-                    f.writelines(distribution[i] + '\n')
+    distribution.save()  # 输出结果到 solution.txt
 
 
 def linearProgramming():
@@ -79,7 +71,6 @@ def linearProgramming():
                      name='95')
 
     # solve
-    model.setParam('TimeLimit', 300)
     model.optimize()
 
     # output solution
@@ -92,12 +83,19 @@ def linearProgramming():
         for t in range(time_num):
             for i in range(client_num):
                 f.writelines(clients[i] + ':')
-                line = [(j, x_result[i, j, t]) for j in range(server_num) if x_result[i, j, t] > 0]
-                for k in range(len(line)):
-                    if k < len(line)-1:
-                        f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>,')
-                    else:
-                        f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>\n')
+                tmp = ','.join([
+                    f'<{servers[j]},{x_result[i, j, t]}>' for j in range(server_num) if x_result[i, j, t] > 0])
+                f.writelines(tmp + '\n')
+    # with open('../output/solution.txt', mode='w+') as f:
+    #     for t in range(time_num):
+    #         for i in range(client_num):
+    #             f.writelines(clients[i] + ':')
+    #             line = [(j, x_result[i, j, t]) for j in range(server_num) if x_result[i, j, t] > 0]
+    #             for k in range(len(line)):
+    #                 if k < len(line) - 1:
+    #                     f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>,')
+    #                 else:
+    #                     f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>\n')
 
 
 def linearProgramming_improved():
@@ -127,7 +125,7 @@ def linearProgramming_improved():
     model.addConstrs((x[i, j, t] == 0 for i in range(client_num) for j in range(server_num) for t in range(time_num)
                       if qos_data[i, j] >= qos_constraint), name='qos')
     model.addConstrs((gp.quicksum(x[i, j, t] for j in range(server_num)) == demand_data[i, t] for i in range(client_num)
-                     for t in range(time_num)), name='demand')
+                      for t in range(time_num)), name='demand')
     model.addConstrs((gp.quicksum(x[i, j, t] for i in range(client_num)) <= server_bandwidths[j] for j in range(server_num)
                       for t in range(time_num)), name='bandwidth_limit')
     model.addConstrs((gp.quicksum(x[i, j, t] for i in range(client_num)) == w[j, t] for j in range(server_num)
@@ -145,7 +143,6 @@ def linearProgramming_improved():
                       for t in range(time_num)), name='95% constraint')
 
     # solve
-    # model.setParam('TimeLimit', 300)
     model.optimize()
 
     # output solution
@@ -154,7 +151,7 @@ def linearProgramming_improved():
     w_result = np.sum(x_result, axis=0)
     print(f'x shape = {x_result.shape}; w shape = {w_result.shape})')
     w_result_sorted = np.sort(w_result, axis=1)
-    cost = np.sum([w_result_sorted[i, time_num-top_num] for i in range(server_num)])
+    cost = np.sum([w_result_sorted[i, time_num - top_num - 1] for i in range(server_num)])
     print(f'Object value = {cost}')
 
     # write solution to file
@@ -162,16 +159,23 @@ def linearProgramming_improved():
         for t in range(time_num):
             for i in range(client_num):
                 f.writelines(clients[i] + ':')
-                line = [(j, x_result[i, j, t]) for j in range(server_num) if x_result[i, j, t] > 0]
-                for k in range(len(line)):
-                    if k < len(line)-1:
-                        f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>,')
-                    else:
-                        f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>\n')
+                tmp = ','.join([
+                    f'<{servers[j]},{x_result[i, j, t]}>' for j in range(server_num) if x_result[i, j, t] > 0])
+                f.writelines(tmp + '\n')
+    # with open('../output/solution.txt', mode='w+') as f:
+    #     for t in range(time_num):
+    #         for i in range(client_num):
+    #             f.writelines(clients[i] + ':')
+    #             line = [(j, x_result[i, j, t]) for j in range(server_num) if x_result[i, j, t] > 0]
+    #             for k in range(len(line)):
+    #                 if k < len(line) - 1:
+    #                     f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>,')
+    #                 else:
+    #                     f.writelines(f'<{servers[line[k][0]]},{line[k][1]}>\n')
 
 
 if __name__ == '__main__':
-    # simple() # 177272
+    # simple()  # 177272
     # linearProgramming() # 186427
-    linearProgramming_improved()
+    linearProgramming_improved() #7958
 
