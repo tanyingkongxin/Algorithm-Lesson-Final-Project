@@ -5,6 +5,7 @@ from gurobipy import GRB
 import random
 import math
 from redistribution import Distribution
+import os
 
 
 def simple():
@@ -17,7 +18,7 @@ def simple():
     time_num, client_num = demand_data.shape
     server_num = len(servers)
 
-    distribution = Distribution(clients, servers, time_num)
+    distribution = Distribution(clients, servers, time_num, qos_data, qos_constraint)
     for t in range(time_num):
         bandwidth_remain = server_bandwidths.copy()
 
@@ -35,6 +36,7 @@ def simple():
             if demand > 0:
                 raise Exception('Wrong distribution!')
     distribution.save()  # 输出结果到 solution.txt
+    distribution.save_sol()  # 输出结果到 output.sol
 
 
 def linearProgramming():
@@ -143,7 +145,14 @@ def linearProgramming_improved():
                       for t in range(time_num)), name='95% constraint')
 
     # solve
+    # model.setParam("TimeLimit", 3600)
+    ## MipGap = (upper_bound - lower_bound)/upper_bound, 对于最小化问题，upper_bound为最优可行解，lower_bound为最优线性松弛解
+    # model.setParam("MipGap", 0.05) # default: 0.0001
+    model.update()
+    if os.path.exists('../output/output.sol'):  # Tip: 如果想重新开始训练模型，请删除 output.sol 文件
+        model.read('../output/output.sol')
     model.optimize()
+    model.write("../output/output.sol")
 
     # output solution
     N = client_num * server_num * time_num

@@ -8,7 +8,7 @@ import timeit
 
 class Distribution:
 
-    def __init__(self, clients: list, servers: list, n_time: int, qos_data, qos_constraint):
+    def __init__(self, clients: list, servers: list, n_time: int, qos_data: np.ndarray, qos_constraint: int):
         self.clients = clients
         self.servers = servers
         self.n_time = n_time
@@ -16,19 +16,17 @@ class Distribution:
         self.n_server = len(servers)
         # self.data = [[[] for _ in range(len(clients))] for _ in range(n_time)]  # shape= n_time * n_client
         self.x = np.zeros(shape=(self.n_client, self.n_server, self.n_time), dtype=int)
-        self.d = np.zeros(shape=(self.n_time, self.n_server), dtype=int)  # 不同时刻每个边缘节点分配的带宽情况
+        self.w = np.zeros(shape=(self.n_server, self.n_time), dtype=int)  # 不同时刻每个边缘节点分配的带宽情况
 
         self.top_num = int(0.05 * n_time)
 
-        self.qos_data = qos_data
-        self.qos_constraint = qos_constraint
+        self.qos = qos_data < qos_constraint
 
         self.index95 = None
 
     def add(self, t, c, s, bandwidth):
         self.x[c, s, t] = bandwidth
-        # self.data[t][c].append((s, bandwidth))
-        self.d[t][s] += bandwidth
+        self.w[s, t] += bandwidth
 
     def save(self):
         # 输出结果到 solution.txt
@@ -39,6 +37,25 @@ class Distribution:
                     tmp = ','.join([
                         f'<{self.servers[j]},{self.x[i, j, t]}>' for j in range(self.n_server) if self.x[i, j, t] > 0])
                     f.writelines(tmp + '\n')
+
+    def save_sol(self, y=None):
+        if y is None:
+            index_sorted = np.argsort(self.w, axis=1)
+            y = np.zeros(shape=self.w.shape, dtype=bool)
+            for s in range(self.n_server):
+                for t in range(self.n_time):
+                    if index_sorted[s, t] > self.n_time - self.top_num - 1:
+                        y[s, t] = 1
+
+        with open('../output/output.sol', mode='w+') as f:
+            for c, s, t in np.ndindex(self.x.shape):
+                f.writelines(f'x[{c},{s},{t}] {self.x[c,s,t]}\n')
+            for s, t in np.ndindex(self.w.shape):
+                f.writelines(f'w[{s},{t}] {self.w[s, t]}\n')
+            for s, t in np.ndindex(y.shape):
+                f.writelines(f'y[{s},{t}] {int(y[s, t])}\n')
+
+        print('write sol file successfully.')
 
     def load(self, path):
         """ 从 solution.txt 载入分配方案 """
@@ -57,11 +74,11 @@ class Distribution:
 
     def get_index95(self):
         if self.index95 is None:
-            index_sorted = np.argsort(self.d, axis=0)
+            index_sorted = np.argsort(self.w, axis=1)
             self.index95 = []
             for s in range(self.n_server):
                 for t in range(self.n_time):
-                    if index_sorted[t, s] == self.n_time - self.top_num - 1:
+                    if index_sorted[s, t] == self.n_time - self.top_num - 1:
                         self.index95.append(t)
                         break
         return self.index95
@@ -71,20 +88,20 @@ class Distribution:
         index95 = self.get_index95()
         for i in np.arange(0, s) + np.arange(s+1, self.n_server):
             for c in c_list:
-                if self.qos_data[i, c] >= self.qos_constraint:
-                    if self.d[t, i] > self.d[index95[i], i]: # top 5 时随便发送带宽
+                if self.qos[i, c]:
+                    if self.w[i, t] > self.w[i, index95[i]]: # top 5 时随便发送带宽
                         # update server s(d, x)
                         # update server i(d, x)
                         pass
                     else:
-                        delta = min(self.d[index95[i], i] - self.d[t, i], self.x[c, s, t])
+                        delta = min(self.w[i, index95[i]] - self.w[i, t], self.x[c, s, t])
                         self.add(t, c, s, -delta)
                         self.add(t, c, i, delta)
                         # update 95 percent cost of server_i
 
     def get_cost(self):
         index95 = self.get_index95()
-        return np.sum(self.d[index95, np.arange(self.n_server)])
+        return np.sum(self.w[np.arange(self.n_server), index95])
 
 
 # def redistribute(d: Distribution):

@@ -171,7 +171,9 @@ if __name__ == '__main__':
     solutionFile = r'../output/solution.txt'
     qosFile = r'../data2/qos.csv'
 
-    qos_constraint = 400
+    with open(f"../data2/config.ini") as f:
+        qos_constraint = int(f.read().splitlines()[1].split('=')[1])
+
     Client, Client_Count, Time_count = readDemand(demandFile)
     Site = readSite(site_bandwidthFile)
     readQos(qosFile)
