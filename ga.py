@@ -29,6 +29,7 @@ class Server():
         self.history_bands = None
         self.reserve_bands = None
         self.history_bands = [{} for _ in range(max_time)]
+        self.max_time_t = max_time
 
     def __repr__(self):
         return f"server_{self.name}"
@@ -49,7 +50,19 @@ class Server():
         costs = [sum(item.values()) for item in self.history_bands[:end_time + 1]]
         return sorted(costs)[math.ceil(len(costs) * 0.95) - 1]
 
-def get_server_order(clients: {str: Client}, servers: {str: Server}, time_t):
+    def free_lunch(self, time_t):
+        costs = list(sorted([sum(item.values()) for item in self.history_bands[:time_t + 1]]))
+        now_cost = costs[math.ceil(len(costs) * 0.95) - 1]
+        lookahead = min(int(time_t / self.max_time_t * time_t), len(self.history_bands) - time_t - 1)
+        if time_t < int(0.5 * self.max_time_t): lookahead = int(lookahead * 1.15)
+        p  = max(time_t / self.max_time_t - 0.3, 0.0) + 0.2
+        estimate_band = p * costs[-1] + (1 - p) * self.bandwidth
+        costs += [estimate_band] * lookahead
+        next_cost = costs[math.ceil(len(costs) * 0.95) - 1]
+        return now_cost - next_cost
+
+
+def get_server_order(clients: {str: Client}, servers: {str: Server}, time_t, use_history=False):
     temp = list(clients.values())
     temp = sorted(temp, key=lambda c: c.demands[time_t], reverse=True)
     servers_order = []
@@ -63,11 +76,13 @@ def get_server_order(clients: {str: Client}, servers: {str: Server}, time_t):
             if s.afford(c, time_t) and rbands + c.demands[time_t] <= s.bandwidth:
                 rbands += c.demands[time_t]
                 cnt += 1
-        servers_order.append((s, cnt, s.bandwidth))
+        servers_order.append((s, cnt, s.bandwidth, rbands, s.free_lunch(time_t)))
 
-    servers_order = list(sorted(servers_order, key=lambda item: (item[1], item[2]), reverse=True))
+    key = lambda item: (item[1], item[2])
+    if use_history: key = lambda item: (item[4], item[1], item[2])
+    servers_order = list(sorted(servers_order, key=key, reverse=True))
     pass
-    print(1)
+    # print(1)
     return [item[0] for item in servers_order]
 
 def distribute(servers_order: [Server], clients: {str: Client}, time_t):
@@ -89,7 +104,7 @@ def distribute(servers_order: [Server], clients: {str: Client}, time_t):
 
 
 def sample_server_order(clients: {str: Client}, servers: {str: Server}, time_t, num):
-    servers_order = get_server_order(clients, servers, time_t)
+    servers_order = get_server_order(clients, servers, time_t, use_history=True)
     p = 100
     weights = []
     for i, _ in enumerate(servers_order):
@@ -126,6 +141,8 @@ def calculate_cost(time_start, time_end, servers: {str: Server}, clients: {str: 
 
 
 if __name__ == '__main__':
+    random.seed(0)
+    np.random.seed(0)
     dir = './data'
     from utils import read_data, write_solution
 
