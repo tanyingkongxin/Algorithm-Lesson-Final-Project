@@ -57,7 +57,10 @@ def write_solution(clients, path, max_time_t):
                     file.write(f'{c.name}:')
                 else:
                     distribution = c.history[time_t]
-                    items = ','.join([f"<{k},{v}>" for k, v in distribution.items()])
+                    temp = []
+                    for k, v in distribution.items():
+                        if v > 0: temp.append(f"<{k},{v}>")
+                    items = ','.join(temp)
                     file.write(f'{c.name}:{items}')
                 file.write('\n')
 
