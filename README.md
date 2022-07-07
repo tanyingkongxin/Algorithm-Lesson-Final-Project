@@ -5,6 +5,6 @@ Dataset: data2/
 - Astar: 617,287
 
 Dataset: data1/
-- Simple: 627,877
+- Simple: 177,272
 - linearProgram: 7,958
-- Astar: 27068
+- Astar: 27,068
