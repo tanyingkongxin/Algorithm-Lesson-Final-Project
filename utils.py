@@ -1,5 +1,10 @@
 import copy
 import numpy as np
+from datetime import datetime
+
+
+def tools_get_time():
+    return datetime.now().strftime("%y-%m-%d-%H_%M_%S")
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
@@ -46,12 +51,12 @@ def read_data(dir_path):
 
     return max_time_t, qos_constraint, customers, servers, server_customers_qos
 
-def write_solution(clients, path, max_time_t):
+def write_solution(clients, path, max_time_num):
     """
     [time1: {customer: {s: band, }, }, time2.....]
     """
     with open(path, 'w') as file:
-        for time_t in range(max_time_t):
+        for time_t in range(max_time_num):
             for c in clients.values():
                 if len(c.history[time_t]) == 0:
                     file.write(f'{c.name}:')
