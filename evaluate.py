@@ -168,8 +168,8 @@ if __name__ == '__main__':
     # 读取输入文件
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--data', help="the data dir path")
-    parser.add_argument('--solution', help='the solution output path')
+    parser.add_argument('--data', help="the data dir path", required=True)
+    parser.add_argument('--solution', help='the solution output path', required=True)
     args = parser.parse_args()
     dir = args.data
     solutionFile = args.solution
