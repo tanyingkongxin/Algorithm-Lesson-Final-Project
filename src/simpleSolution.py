@@ -186,5 +186,9 @@ def linearProgramming_improved():
 if __name__ == '__main__':
     # simple()  # 177272
     # linearProgramming() # 186427
+    import time
+    start_time = time.time()
     linearProgramming_improved() #7958
+    end_time = time.time() - start_time
+    print(f'linear improved costs {end_time}')
 

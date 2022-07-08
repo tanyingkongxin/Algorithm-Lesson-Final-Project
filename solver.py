@@ -143,7 +143,7 @@ class Solver():
                 if time_t == self.max_time_num - 1 or (time_t + 1) % self.lifting_interval == 0:
                     if debug:
                         print(f'starting lifting {time_t}')
-                    iter_servers, iter_clients = reduce(iter_servers, iter_clients, self.max_time_num - 1, debug=debug)
+                    iter_servers, iter_clients = lifting(iter_servers, iter_clients, self.max_time_num - 1, debug=debug)
 
                 expected_costs = [s.get_cost(s.max_time_num - 1) for s in iter_servers.values()]
                 pbar.set_postfix({'time': time_t, 'current_cost': cost, 'expected_cost': sum(expected_costs)})
@@ -293,7 +293,7 @@ def distribute(servers_order: [Server], clients: {str: Client}, time_t):
     return True, cost, servers_order, clients
 
 
-def reduce(servers: {str: Server}, clients: {str: Client}, time_t, debug=False):
+def lifting(servers: {str: Server}, clients: {str: Client}, time_t, debug=False):
     def transfer(c: Client, src_server: Server, tgt_server: Server, time_t, transfer_bands):
         assert transfer_bands <= src_server.history_bands[time_t][c.name]
         assert transfer_bands <= tgt_server.reserve_bands[time_t]

@@ -11,7 +11,7 @@ import datetime
 # def _datestr2num(date_str) -> int:
 #     s_date = datetime.datetime.strptime(date_str, '%Y-%m-%dT%H:%M').timestamp()
 #     return int(s_date)
-data_dir = '../data2'
+data_dir = '../data'
 
 
 def read_demand():
