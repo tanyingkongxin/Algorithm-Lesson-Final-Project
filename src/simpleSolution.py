@@ -184,11 +184,19 @@ def linearProgramming_improved():
 
 
 if __name__ == '__main__':
-    # simple()  # 177272
-    # linearProgramming() # 186427
+    from argparse import ArgumentParser
     import time
+    parser = ArgumentParser()
+    parser.add_argument('--linear', choices=['normal', 'improved'], required=True)
+    args = parser.parse_args()
+        
     start_time = time.time()
-    linearProgramming_improved() #7958
+    if args.linear == 'normal':
+        linearProgramming() # 186427
+    elif args.linear == 'improved':
+        linearProgramming_improved() #7958 in 300 seconds, at least 5641 without time limited
+    else:
+        raise NotImplementedError()
     end_time = time.time() - start_time
-    print(f'linear improved costs {end_time}')
+    print(f'linear {args.linear} costs {end_time}')
 
